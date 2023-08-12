@@ -48,7 +48,7 @@ setup(
         "django-filter>=2.2.0",
         "graphene_django>=2.1.8",
         "graphene<3,>=2.1.8",
-        "PyJWT<3.0.0",
+        "PyJWT<2.0.0",
     ],
     tests_require=tests_require,
     classifiers=[
