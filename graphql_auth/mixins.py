@@ -1,39 +1,44 @@
 from smtplib import SMTPException
 
-from django.core.signing import BadSignature, SignatureExpired
-from django.core.exceptions import ObjectDoesNotExist
+import graphene
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import SetPasswordForm, PasswordChangeForm
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.forms import SetPasswordForm
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.signing import BadSignature
+from django.core.signing import SignatureExpired
 from django.db import transaction
 from django.utils.module_loading import import_string
-
-import graphene
-
-from graphql_jwt.exceptions import JSONWebTokenError, JSONWebTokenExpired
 from graphql_jwt.decorators import token_auth
+from graphql_jwt.exceptions import JSONWebTokenError
+from graphql_jwt.exceptions import JSONWebTokenExpired
 
-from .forms import RegisterForm, EmailForm, UpdateAccountForm, PasswordLessRegisterForm
 from .bases import Output
+from .constants import Messages
+from .constants import TokenAction
+from .decorators import password_confirmation_required
+from .decorators import secondary_email_required
+from .decorators import verification_required
+from .exceptions import EmailAlreadyInUse
+from .exceptions import InvalidCredentials
+from .exceptions import PasswordAlreadySetError
+from .exceptions import TokenScopeError
+from .exceptions import UserAlreadyVerified
+from .exceptions import UserNotVerified
+from .exceptions import WrongUsage
+from .forms import EmailForm
+from .forms import PasswordLessRegisterForm
+from .forms import RegisterForm
+from .forms import UpdateAccountForm
 from .models import UserStatus
 from .settings import graphql_auth_settings as app_settings
-from .exceptions import (
-    UserAlreadyVerified,
-    UserNotVerified,
-    WrongUsage,
-    TokenScopeError,
-    EmailAlreadyInUse,
-    InvalidCredentials,
-    PasswordAlreadySetError,
-)
-from .constants import Messages, TokenAction
-from .utils import revoke_user_refresh_token, get_token_payload, using_refresh_tokens
-from .shortcuts import get_user_by_email, get_user_to_login
-from .signals import user_registered, user_verified
-from .decorators import (
-    password_confirmation_required,
-    verification_required,
-    secondary_email_required,
-)
+from .shortcuts import get_user_by_email
+from .shortcuts import get_user_to_login
+from .signals import user_registered
+from .signals import user_verified
+from .utils import get_token_payload
+from .utils import revoke_user_refresh_token
+from .utils import using_refresh_tokens
 
 UserModel = get_user_model()
 if app_settings.EMAIL_ASYNC_TASK and isinstance(app_settings.EMAIL_ASYNC_TASK, str):
@@ -429,9 +434,9 @@ class ObtainJSONWebTokenMixin(Output):
                 raise UserNotVerified
             raise InvalidCredentials
         except (JSONWebTokenError, ObjectDoesNotExist, InvalidCredentials):
-            return cls(success=False, errors=Messages.INVALID_CREDENTIALS)
+            return cls(success=False, errors=Messages.INVALID_CREDENTIALS, token="")
         except UserNotVerified:
-            return cls(success=False, errors=Messages.NOT_VERIFIED)
+            return cls(success=False, errors=Messages.NOT_VERIFIED, token="")
 
 
 class ArchiveOrDeleteMixin(Output):
