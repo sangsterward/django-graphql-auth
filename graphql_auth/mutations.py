@@ -1,28 +1,27 @@
 import graphene
 import graphql_jwt
 
-from .bases import MutationMixin, DynamicArgsMixin
-from .mixins import (
-    RegisterMixin,
-    VerifyAccountMixin,
-    ResendActivationEmailMixin,
-    SendPasswordResetEmailMixin,
-    PasswordSetMixin,
-    PasswordResetMixin,
-    ObtainJSONWebTokenMixin,
-    ArchiveAccountMixin,
-    DeleteAccountMixin,
-    PasswordChangeMixin,
-    UpdateAccountMixin,
-    VerifyOrRefreshOrRevokeTokenMixin,
-    SendSecondaryEmailActivationMixin,
-    VerifySecondaryEmailMixin,
-    SwapEmailsMixin,
-    RemoveSecondaryEmailMixin,
-)
-from .utils import normalize_fields
-from .settings import graphql_auth_settings as app_settings
+from .bases import DynamicArgsMixin
+from .bases import MutationMixin
+from .mixins import ArchiveAccountMixin
+from .mixins import DeleteAccountMixin
+from .mixins import ObtainJSONWebTokenMixin
+from .mixins import PasswordChangeMixin
+from .mixins import PasswordResetMixin
+from .mixins import PasswordSetMixin
+from .mixins import RegisterMixin
+from .mixins import RemoveSecondaryEmailMixin
+from .mixins import ResendActivationEmailMixin
+from .mixins import SendPasswordResetEmailMixin
+from .mixins import SendSecondaryEmailActivationMixin
+from .mixins import SwapEmailsMixin
+from .mixins import UpdateAccountMixin
+from .mixins import VerifyAccountMixin
+from .mixins import VerifyOrRefreshOrRevokeTokenMixin
+from .mixins import VerifySecondaryEmailMixin
 from .schema import UserNode
+from .settings import graphql_auth_settings as app_settings
+from .utils import normalize_fields
 
 
 class Register(MutationMixin, DynamicArgsMixin, RegisterMixin, graphene.Mutation):
@@ -102,9 +101,16 @@ class PasswordReset(
     _required_args = ["token", "new_password1", "new_password2"]
 
 
-class ObtainJSONWebToken(
-    MutationMixin, ObtainJSONWebTokenMixin, graphql_jwt.JSONWebTokenMutation
-):
+
+class JSONWebTokenMutation(graphql_jwt.JSONWebTokenMutation):
+    token = graphene.String()
+
+    @classmethod
+    def resolve(cls, root, info, **kwargs):
+        return cls(user=info.context.user)
+
+
+class ObtainJSONWebToken(MutationMixin, ObtainJSONWebTokenMixin, JSONWebTokenMutation):
     __doc__ = ObtainJSONWebTokenMixin.__doc__
     user = graphene.Field(UserNode)
     unarchiving = graphene.Boolean(default_value=False)
@@ -114,7 +120,7 @@ class ObtainJSONWebToken(
         cls._meta.arguments.update({"password": graphene.String(required=True)})
         for field in app_settings.LOGIN_ALLOWED_FIELDS:
             cls._meta.arguments.update({field: graphene.String()})
-        return super(graphql_jwt.JSONWebTokenMutation, cls).Field(*args, **kwargs)
+        return super(JSONWebTokenMutation, cls).Field(*args, **kwargs)
 
 
 class ArchiveAccount(
